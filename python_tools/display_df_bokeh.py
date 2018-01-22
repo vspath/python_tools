@@ -33,8 +33,132 @@ def split_df_by_value_range(df, round_base=-3, threshold=100):
     return df_dict
 
 
+def plot_df_bokeh(df,
+                  save_plot=False,
+                  output_path= os.getcwd(),
+                  output_filename= "data.html",
+                  hook_att_df=None,
+                  title=None,
+                  time_series=False,
+                  x_axis_label=None,
+                  y_axis_label=None,
+                  label={}):
 
-def plot_df_bokeh(df_dict,
+    formatter = {}
+
+    # Create Figure object
+    if time_series:
+        x_axis_type = "datetime"
+    else:
+        x_axis_type = "auto"
+
+    if not df.index.name:
+        df.index.name = "index"
+
+    p = figure(title=title,
+               x_axis_label=x_axis_label,
+               y_axis_label=y_axis_label,
+               x_axis_type=x_axis_type,
+               width=800, height=500,
+               #tools = "pan,box_zoom,wheel_zoom,save,reset,hover",
+               toolbar_location="above")
+
+
+    # create invisible datacolumn where hook will be attached
+    if hook_att_df is None:
+        df['invisible'] = df[df.columns[0]]
+    else:
+        df['invisible'] = df[hook_att_df]
+
+    # create a color iterator
+    colors = itertools.cycle(palette)
+
+    # remove "/" from column names
+    cols = [c.replace("/", "_") for c in list(df.columns)]
+
+    df.columns = cols
+
+    #---------------------------------------------------------
+    # define dataframe columns as data source
+    source = ColumnDataSource(df)
+
+    # plot column data
+    for name, color in zip(df, colors):
+        # add invisible line to anchor tooltip
+        if name == 'invisible':
+            p.line(x=df.index.name,
+                   y=name,
+                   source=source,
+                   line_alpha=0,
+                   name='tooltip_anchor')
+        else:
+            p.line(x=df.index.name,
+                   y=name,
+                   source=source,
+                   legend=f"{name}_values",
+                   color=color)
+
+    # interactive legend, allows to hide single lines
+    p.legend.location = "top_right"
+    p.legend.click_policy = "hide"
+
+
+    # add all columns to hovertool except the invisible one where the hovertool will be attached to
+    tooltips = [(c, '@' + c) for c in cols if c != 'invisible']
+
+    if time_series:
+        tooltips.append((df.index.name, "@" + df.index.name + "{%F %T}"))
+        formatter = {df.index.name: 'datetime'}
+
+    # create hover tool
+    hover = HoverTool(tooltips=tooltips,
+                      formatters=formatter,
+                      mode='vline',
+                      names=['tooltip_anchor'],
+                      line_policy="nearest")
+
+    # add hover to figure
+    p.add_tools(hover)
+
+
+    # add meta info to plot
+    if label:
+        if isinstance(label, dict):
+            for key, value in label.items():
+                lab = Label(x=10, y=30, x_units='screen', y_units='screen',
+                            text=value,
+                            render_mode='css',
+                            border_line_color='black', border_line_alpha=1.0,
+                            text_font_size='11pt',
+                            background_fill_color='white', background_fill_alpha=1.0)
+                p.add_layout(lab)
+
+        elif isinstance(label, str):
+            lab = Label(x=10, y=30, x_units='screen', y_units='screen',
+                        text=label,
+                        render_mode='css',
+                        border_line_color='black', border_line_alpha=1.0,
+                        text_font_size='11pt',
+                        background_fill_color='white', background_fill_alpha=1.0)
+            p.add_layout(lab)
+
+
+    if save_plot:
+        if "." not in output_filename:
+            output_filename = output_filename + ".html"
+        # save html
+        print("File saved as:", os.path.join(output_path, output_filename))
+        html = file_html(p, CDN)
+        with open(f"{output_path}/{output_filename}", "w") as f:
+            f.write(html)
+
+    return (p)
+
+
+
+
+
+def plot_df_dict_bokeh(df_dict,
                   save_plot=False,
                   output_path= os.getcwd(),
                   output_filename= "data.html",
@@ -182,4 +306,12 @@ def plot_df_bokeh(df_dict,
 
 
 
+
+#df = pd.DataFrame()
+#df['temp'] = [29,30,28,29]
+#df['temp2'] = [27,25,26,28]
+
+#print(df.head())
+
+#plot_df_bokeh(df, save_plot=True, output_path="/Users/VeSpa/Desktop", output_filename="test.html")
 
