@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import json
 import pprint
@@ -124,8 +125,11 @@ def plot_df_bokeh(df,
     # add meta info to plot
     if label:
         if isinstance(label, dict):
-            for key, value in label.items():
-                lab = Label(x=10, y=30, x_units='screen', y_units='screen',
+
+            coords_y = np.linspace(0, 10*len(label.keys()), len(label.keys()))
+
+            for (key, value), y_coord in zip(label.items(), coords_y):
+                lab = Label(x=10, y=y_coord, x_units='screen', y_units='screen',
                             text=value,
                             render_mode='css',
                             border_line_color='black', border_line_alpha=1.0,
